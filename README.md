@@ -1,6 +1,10 @@
+<div align="center">
+  <img src="logo.svg" alt="Context Clues Logo" width="200"/>
+
 # context-clues
 
 Easily copy context like the current file name and path, using a convenient transient menu interface!
+</div>
 
 ## Features
 
