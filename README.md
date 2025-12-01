@@ -9,8 +9,11 @@ Easily copy context like the current file name and path, using a convenient tran
 ## Features
 
 - **File name** - Copy base file name (e.g., `file.el`)
+- **Relative path** - Copy relative path from project root (e.g., `src/lib/file.el`)
 - **Full path** - Copy absolute file path
 - **Directory** - Copy directory path (or default directory for non-file buffers)
+- **File with line** - Copy file name with line number (e.g., `file.el:123`)
+- **Project name** - Copy current project name
 - **Buffer name** - Copy current buffer name
 - **Git branch** - Copy current git branch name
 - **Line number** - Copy current line number
@@ -52,10 +55,7 @@ Run `M-x context-clues` to open the transient menu, then press the corresponding
 - `f` - Copy file name
 - `F` - Copy full path (absolute)
 - `d` - Copy directory
-- `b` - Copy buffer name
-- `g` - Copy git branch
-- `l` - Copy line number
-- `n` - Copy function name
+- etc.
 
 Press `q` or `C-g` to quit the menu without copying anything.
 
