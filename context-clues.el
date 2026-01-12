@@ -107,10 +107,12 @@ For non-file-visiting buffers, copies the default directory."
   "Copy the relative file path from project root."
   (interactive)
   (if-let ((file-name (buffer-file-name)))
-      (let* ((project-root (or (and (fboundp 'project-root)
+      (let* (
+             (project-root (or (and (fboundp 'project-root)
                                     (project-root (project-current)))
                               default-directory))
-             (relative-path (file-relative-name file-name project-root)))
+             (relative-path (file-relative-name file-name project-root))
+             )
         (context-clues--copy-to-kill-ring relative-path "relative path"))
     (user-error "Buffer is not visiting a file")))
 
@@ -122,6 +124,21 @@ For non-file-visiting buffers, copies the default directory."
              (line-num (line-number-at-pos))
              (file-with-line (format "%s:%d" base-name line-num)))
         (context-clues--copy-to-kill-ring file-with-line "file with line"))
+    (user-error "Buffer is not visiting a file")))
+
+(defun context-clues-copy-relative-path-with-line ()
+  "Copy the relative path with line number (e.g., path/file.el:123)."
+  (interactive)
+  (if-let ((file-name (buffer-file-name)))
+      (let* (
+             (project-root (or (and (fboundp 'project-root)
+                                    (project-root (project-current)))
+                              default-directory))
+             (relative-path (file-relative-name file-name project-root))
+             (line-num (line-number-at-pos))
+             (path-with-line (format "%s:%d" relative-path line-num))
+             )
+        (context-clues--copy-to-kill-ring path-with-line "relative path with line"))
     (user-error "Buffer is not visiting a file")))
 
 (defun context-clues-copy-project-name ()
@@ -175,6 +192,8 @@ For non-file-visiting buffers, copies the default directory."
      :inapt-if-not context-clues--buffer-file-name-p)
     ("d" "Directory" context-clues-copy-directory)]
    [(":" "File with line (file:123)" context-clues-copy-file-with-line
+     :inapt-if-not context-clues--buffer-file-name-p)
+    (";" "Relative path with line (path:123)" context-clues-copy-relative-path-with-line
      :inapt-if-not context-clues--buffer-file-name-p)
     ("p" "Project name" context-clues-copy-project-name
      :inapt-if-not context-clues--in-project-p)]]
