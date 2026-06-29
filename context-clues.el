@@ -103,17 +103,23 @@ For non-file-visiting buffers, copies the default directory."
                      default-directory)))
     (context-clues--copy-to-kill-ring directory "directory")))
 
+(defun context-clues--relative-path (file-name)
+  "Return FILE-NAME relative to the project root.
+Both FILE-NAME and the project root are resolved with `file-truename'
+first, so a symlinked tree (e.g. a dotfiles repo linked into the home
+directory) does not produce a path full of leading \"../\"."
+  (let* ((project-root (or (and (fboundp 'project-root)
+                                (project-root (project-current)))
+                           default-directory)))
+    (file-relative-name (file-truename file-name)
+                        (file-truename project-root))))
+
 (defun context-clues-copy-relative-path ()
   "Copy the relative file path from project root."
   (interactive)
   (if-let ((file-name (buffer-file-name)))
-      (let* (
-             (project-root (or (and (fboundp 'project-root)
-                                    (project-root (project-current)))
-                              default-directory))
-             (relative-path (file-relative-name file-name project-root))
-             )
-        (context-clues--copy-to-kill-ring relative-path "relative path"))
+      (context-clues--copy-to-kill-ring
+       (context-clues--relative-path file-name) "relative path")
     (user-error "Buffer is not visiting a file")))
 
 (defun context-clues-copy-file-with-line ()
@@ -130,14 +136,9 @@ For non-file-visiting buffers, copies the default directory."
   "Copy the relative path with line number (e.g., path/file.el:123)."
   (interactive)
   (if-let ((file-name (buffer-file-name)))
-      (let* (
-             (project-root (or (and (fboundp 'project-root)
-                                    (project-root (project-current)))
-                              default-directory))
-             (relative-path (file-relative-name file-name project-root))
+      (let* ((relative-path (context-clues--relative-path file-name))
              (line-num (line-number-at-pos))
-             (path-with-line (format "%s:%d" relative-path line-num))
-             )
+             (path-with-line (format "%s:%d" relative-path line-num)))
         (context-clues--copy-to-kill-ring path-with-line "relative path with line"))
     (user-error "Buffer is not visiting a file")))
 
