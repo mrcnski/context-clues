@@ -4,6 +4,10 @@
 # context-clues
 
 Easily copy context like the current file name and path, using a convenient transient menu interface!
+
+<img src="screenshot.png" alt="context-clues transient showing different possible clues" width="500">
+<br>
+
 </div>
 
 ## Features
