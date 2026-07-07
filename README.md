@@ -5,9 +5,7 @@
 
 Easily copy context like the current file name and path, using a convenient transient menu interface!
 
-<img src="screenshot.png" alt="context-clues transient showing different possible clues" width="500">
-<br>
-
+<img src="screenshot.png" alt="context-clues transient showing different possible clues" width="550">
 </div>
 
 ## Features
@@ -17,15 +15,7 @@ Easily copy context like the current file name and path, using a convenient tran
 - **Full path** - Copy absolute file path
 - **Directory** - Copy directory path (or default directory for non-file buffers)
 - **File with line** - Copy file name with line number (e.g., `file.el:123`)
-- **Project name** - Copy current project name
-- **Buffer name** - Copy current buffer name
-- **Git branch** - Copy current git branch name
-- **Line number** - Copy current line number
-- **Function name** - Copy current function name
-
-## Requirements
-
-- Emacs 28.1 or later
+- ... and more!
 
 ## Installation
 
@@ -61,8 +51,6 @@ Run `M-x context-clues` to open the transient menu, then press the corresponding
 - `d` - Copy directory
 - etc.
 
-Press `q` or `C-g` to quit the menu without copying anything.
-
 ## Customization
 
 ### Message Format
@@ -87,6 +75,10 @@ Bind to a convenient key:
 ```elisp
 (global-set-key (kbd "C-c c") 'context-clues)
 ```
+
+## Requirements
+
+- Emacs 28.1 or later
 
 ## License
 
