@@ -10,6 +10,10 @@ Easily copy context like the current file name and path, using a convenient tran
 
 ## Features
 
+Every entry in the menu shows a **live preview** of the value it would copy —
+labels on the left, values on the right. Entries that don't apply to the
+current buffer are grayed out.
+
 - **File name** - Copy base file name (e.g., `file.el`)
 - **Relative path** - Copy relative path from project root (e.g., `src/lib/file.el`)
 - **Full path** - Copy absolute file path
@@ -67,6 +71,18 @@ Use `{text}` for the copied text and `{description}` for the description (e.g., 
 ;; Show description first
 (setq context-clues-message-format "{description}: {text}")
 ```
+
+### Previews
+
+Long values are truncated at the front (keeping the tail — for paths, the
+distinctive part). Customize the width and the face:
+
+```elisp
+(setq context-clues-preview-max-width 60) ; default 50
+```
+
+The previews use the `context-clues-preview-face` face (inherits `shadow` by
+default); customize it with `M-x customize-face`.
 
 ### Key Binding
 

@@ -34,14 +34,16 @@
 ;;   M-x context-clues
 ;;
 ;; This opens a transient menu with options for copying file names, paths,
-;; line numbers, function names, git branches, and more.  Options that are
-;; not applicable to the current buffer will be grayed out.
+;; line numbers, function names, git branches, and more.  Each entry shows
+;; a live preview of the value it would copy.  Options that are not
+;; applicable to the current buffer will be grayed out.
 ;;
 ;; See the README for the full list of features and keybindings.
 
 ;;; Code:
 
 (require 'project)
+(require 'subr-x)
 (require 'transient)
 (require 'which-func)
 
@@ -57,6 +59,18 @@ Example: \"Copied: {text} ({description})\" or \"{description}: {text}\""
   :type 'string
   :group 'context-clues)
 
+(defcustom context-clues-preview-max-width 50
+  "Maximum width of the value previews shown in the menu.
+A longer value is truncated at the front, keeping its tail -- for paths,
+the most distinctive part."
+  :type 'integer
+  :group 'context-clues)
+
+(defface context-clues-preview-face
+  '((t :inherit shadow))
+  "Face for the value previews shown next to each clue in the menu."
+  :group 'context-clues)
+
 ;;; Helper Functions
 
 (defun context-clues--buffer-file-name-p ()
@@ -69,7 +83,7 @@ Example: \"Copied: {text} ({description})\" or \"{description}: {text}\""
 
 (defun context-clues--in-project-p ()
   "Return non-nil if current buffer is in a project."
-  (and (fboundp 'project-current) (project-current)))
+  (project-current))
 
 (defun context-clues--copy-to-kill-ring (text description)
   "Copy TEXT to kill ring and display TEXT and DESCRIPTION."
@@ -79,32 +93,26 @@ Example: \"Copied: {text} ({description})\" or \"{description}: {text}\""
                                              context-clues-message-format))))
     (message "%s" msg)))
 
-;;; Copy Functions
+;;; Clue Values
 
-(defun context-clues-copy-file-name ()
-  "Copy the base file name of the current buffer."
-  (interactive)
+;; One function per clue, returning the string that would be copied, or
+;; nil when the clue does not apply to the current buffer.  The copy
+;; commands and the menu previews are both built on these.
+
+(defun context-clues--file-name ()
+  "The base file name, or nil for a non-file buffer."
+  (when-let ((file-name (buffer-file-name)))
+    (file-name-nondirectory file-name)))
+
+(defun context-clues--full-path ()
+  "The absolute file path, or nil for a non-file buffer."
+  (buffer-file-name))
+
+(defun context-clues--directory ()
+  "The file's directory, or `default-directory' for a non-file buffer."
   (if-let ((file-name (buffer-file-name)))
-      (let ((base-name (file-name-nondirectory file-name)))
-        (context-clues--copy-to-kill-ring base-name "file name"))
-    (user-error "Buffer is not visiting a file")))
-
-(defun context-clues-copy-full-path ()
-  "Copy the absolute file path of the current buffer."
-  (interactive)
-  (if-let ((file-name (buffer-file-name)))
-      (context-clues--copy-to-kill-ring file-name "full path")
-    (user-error "Buffer is not visiting a file")))
-
-(defun context-clues-copy-directory ()
-  "Copy the directory path of the current buffer.
-For file-visiting buffers, copies the file's directory.
-For non-file-visiting buffers, copies the default directory."
-  (interactive)
-  (let ((directory (if-let ((file-name (buffer-file-name)))
-                       (file-name-directory file-name)
-                     default-directory)))
-    (context-clues--copy-to-kill-ring directory "directory")))
+      (file-name-directory file-name)
+    default-directory))
 
 (defun context-clues--relative-path (file-name)
   "Return FILE-NAME relative to the project root.
@@ -118,71 +126,194 @@ project, the path is relative to `default-directory' instead."
     (file-relative-name (file-truename file-name)
                         (file-truename project-root))))
 
+(defun context-clues--relative-path-value ()
+  "The project-relative file path, or nil for a non-file buffer."
+  (when-let ((file-name (buffer-file-name)))
+    (context-clues--relative-path file-name)))
+
+(defun context-clues--file-with-line ()
+  "The base file name with line number (file.el:123), or nil."
+  (when-let ((base-name (context-clues--file-name)))
+    (format "%s:%d" base-name (line-number-at-pos))))
+
+(defun context-clues--relative-path-with-line ()
+  "The project-relative path with line number (path/file.el:123), or nil."
+  (when-let ((relative-path (context-clues--relative-path-value)))
+    (format "%s:%d" relative-path (line-number-at-pos))))
+
+(defun context-clues--project-name ()
+  "The current project's directory name, or nil outside a project."
+  (when-let* ((project (project-current))
+              (project-root (project-root project)))
+    (file-name-nondirectory (directory-file-name project-root))))
+
+(defun context-clues--buffer-name ()
+  "The current buffer name."
+  (buffer-name))
+
+(defun context-clues--git-branch ()
+  "The current git branch, or nil when absent or undeterminable."
+  (when (context-clues--in-git-repo-p)
+    (let ((branch (string-trim
+                   (shell-command-to-string
+                    "git symbolic-ref --short HEAD 2>/dev/null"))))
+      (unless (string-empty-p branch) branch))))
+
+(defun context-clues--line-number ()
+  "The current line number, as a string."
+  (number-to-string (line-number-at-pos)))
+
+(defun context-clues--function-name ()
+  "The name of the function at point, or nil when undeterminable."
+  (ignore-errors (which-function)))
+
+;;; Copy Functions
+
+(defun context-clues-copy-file-name ()
+  "Copy the base file name of the current buffer."
+  (interactive)
+  (if-let ((base-name (context-clues--file-name)))
+      (context-clues--copy-to-kill-ring base-name "file name")
+    (user-error "Buffer is not visiting a file")))
+
+(defun context-clues-copy-full-path ()
+  "Copy the absolute file path of the current buffer."
+  (interactive)
+  (if-let ((file-name (context-clues--full-path)))
+      (context-clues--copy-to-kill-ring file-name "full path")
+    (user-error "Buffer is not visiting a file")))
+
+(defun context-clues-copy-directory ()
+  "Copy the directory path of the current buffer.
+For file-visiting buffers, copies the file's directory.
+For non-file-visiting buffers, copies the default directory."
+  (interactive)
+  (context-clues--copy-to-kill-ring (context-clues--directory) "directory"))
+
 (defun context-clues-copy-relative-path ()
   "Copy the relative file path from project root."
   (interactive)
-  (if-let ((file-name (buffer-file-name)))
-      (context-clues--copy-to-kill-ring
-       (context-clues--relative-path file-name) "relative path")
+  (if-let ((relative-path (context-clues--relative-path-value)))
+      (context-clues--copy-to-kill-ring relative-path "relative path")
     (user-error "Buffer is not visiting a file")))
 
 (defun context-clues-copy-file-with-line ()
   "Copy the file name with line number (e.g., file.el:123)."
   (interactive)
-  (if-let ((file-name (buffer-file-name)))
-      (let* ((base-name (file-name-nondirectory file-name))
-             (line-num (line-number-at-pos))
-             (file-with-line (format "%s:%d" base-name line-num)))
-        (context-clues--copy-to-kill-ring file-with-line "file with line"))
+  (if-let ((file-with-line (context-clues--file-with-line)))
+      (context-clues--copy-to-kill-ring file-with-line "file with line")
     (user-error "Buffer is not visiting a file")))
 
 (defun context-clues-copy-relative-path-with-line ()
   "Copy the relative path with line number (e.g., path/file.el:123)."
   (interactive)
-  (if-let ((file-name (buffer-file-name)))
-      (let* ((relative-path (context-clues--relative-path file-name))
-             (line-num (line-number-at-pos))
-             (path-with-line (format "%s:%d" relative-path line-num)))
-        (context-clues--copy-to-kill-ring path-with-line "relative path with line"))
+  (if-let ((path-with-line (context-clues--relative-path-with-line)))
+      (context-clues--copy-to-kill-ring path-with-line "relative path with line")
     (user-error "Buffer is not visiting a file")))
 
 (defun context-clues-copy-project-name ()
   "Copy the current project name."
   (interactive)
-  (if-let* ((project (and (fboundp 'project-current) (project-current)))
-            (project-root (project-root project)))
-      (let ((project-name (file-name-nondirectory (directory-file-name project-root))))
-        (context-clues--copy-to-kill-ring project-name "project name"))
+  (if-let ((project-name (context-clues--project-name)))
+      (context-clues--copy-to-kill-ring project-name "project name")
     (user-error "Not in a project")))
 
 (defun context-clues-copy-buffer-name ()
   "Copy the current buffer name."
   (interactive)
-  (context-clues--copy-to-kill-ring (buffer-name) "buffer name"))
+  (context-clues--copy-to-kill-ring (context-clues--buffer-name) "buffer name"))
 
 (defun context-clues-copy-git-branch ()
   "Copy the current git branch name."
   (interactive)
-  (if (context-clues--in-git-repo-p)
-      (let ((branch (string-trim
-                     (shell-command-to-string "git symbolic-ref --short HEAD 2>/dev/null"))))
-        (if (string-empty-p branch)
-            (user-error "Could not determine git branch")
-          (context-clues--copy-to-kill-ring branch "git branch")))
-    (user-error "Buffer is not in a git repository")))
+  (unless (context-clues--in-git-repo-p)
+    (user-error "Buffer is not in a git repository"))
+  (if-let ((branch (context-clues--git-branch)))
+      (context-clues--copy-to-kill-ring branch "git branch")
+    (user-error "Could not determine git branch")))
 
 (defun context-clues-copy-line-number ()
   "Copy the current line number."
   (interactive)
-  (let ((line-num (number-to-string (line-number-at-pos))))
-    (context-clues--copy-to-kill-ring line-num "line number")))
+  (context-clues--copy-to-kill-ring (context-clues--line-number) "line number"))
 
 (defun context-clues-copy-function-name ()
   "Copy the current function name."
   (interactive)
-  (if-let ((func-name (which-function)))
+  (if-let ((func-name (context-clues--function-name)))
       (context-clues--copy-to-kill-ring func-name "function name")
     (user-error "Could not determine current function")))
+
+;;; Menu Descriptions
+
+(defconst context-clues--label-width 25
+  "Column where the value previews start in the menu.")
+
+(defun context-clues--preview (value)
+  "Return VALUE truncated and faced for display in the menu, or nil.
+A value wider than `context-clues-preview-max-width' keeps its tail,
+with a leading ellipsis."
+  (when value
+    (let ((len (length value))
+          (max-width (max 2 context-clues-preview-max-width)))
+      (propertize (if (> len max-width)
+                      (concat "…" (substring value (- len (1- max-width))))
+                    value)
+                  'face 'context-clues-preview-face))))
+
+(defun context-clues--describe (label value)
+  "Return a menu description: LABEL, then a preview of VALUE.
+Labels are padded to `context-clues--label-width' so the previews line
+up as a column.  With a nil VALUE (an inapplicable clue), the bare LABEL
+is returned."
+  (if-let ((preview (context-clues--preview value)))
+      (format (format "%%-%ds%%s" context-clues--label-width) label preview)
+    label))
+
+(defun context-clues--describe-file-name ()
+  "Menu description for the file-name clue."
+  (context-clues--describe "File name" (context-clues--file-name)))
+
+(defun context-clues--describe-relative-path ()
+  "Menu description for the relative-path clue."
+  (context-clues--describe "Relative path" (context-clues--relative-path-value)))
+
+(defun context-clues--describe-full-path ()
+  "Menu description for the full-path clue."
+  (context-clues--describe "Full path" (context-clues--full-path)))
+
+(defun context-clues--describe-directory ()
+  "Menu description for the directory clue."
+  (context-clues--describe "Directory" (context-clues--directory)))
+
+(defun context-clues--describe-file-with-line ()
+  "Menu description for the file-with-line clue."
+  (context-clues--describe "File with line" (context-clues--file-with-line)))
+
+(defun context-clues--describe-relative-path-with-line ()
+  "Menu description for the relative-path-with-line clue."
+  (context-clues--describe "Relative path with line"
+                           (context-clues--relative-path-with-line)))
+
+(defun context-clues--describe-project-name ()
+  "Menu description for the project-name clue."
+  (context-clues--describe "Project name" (context-clues--project-name)))
+
+(defun context-clues--describe-buffer-name ()
+  "Menu description for the buffer name clue."
+  (context-clues--describe "Buffer name" (context-clues--buffer-name)))
+
+(defun context-clues--describe-git-branch ()
+  "Menu description for the git-branch clue."
+  (context-clues--describe "Git branch" (context-clues--git-branch)))
+
+(defun context-clues--describe-line-number ()
+  "Menu description for the line-number clue."
+  (context-clues--describe "Line number" (context-clues--line-number)))
+
+(defun context-clues--describe-function-name ()
+  "Menu description for the function-name clue."
+  (context-clues--describe "Function name" (context-clues--function-name)))
 
 ;;; Transient Menu
 
@@ -190,25 +321,36 @@ project, the path is relative to `default-directory' instead."
 (transient-define-prefix context-clues ()
   "Copy file, buffer, and context information."
   ["File & Path"
-   [("f" "File name" context-clues-copy-file-name
-     :inapt-if-not context-clues--buffer-file-name-p)
-    ("r" "Relative path" context-clues-copy-relative-path
-     :inapt-if-not context-clues--buffer-file-name-p)
-    ("F" "Full path (absolute)" context-clues-copy-full-path
-     :inapt-if-not context-clues--buffer-file-name-p)
-    ("d" "Directory" context-clues-copy-directory)]
-   [(":" "File with line (file:123)" context-clues-copy-file-with-line
-     :inapt-if-not context-clues--buffer-file-name-p)
-    (";" "Relative path with line (path:123)" context-clues-copy-relative-path-with-line
-     :inapt-if-not context-clues--buffer-file-name-p)
-    ("p" "Project name" context-clues-copy-project-name
-     :inapt-if-not context-clues--in-project-p)]]
+   ("f" context-clues-copy-file-name
+    :description context-clues--describe-file-name
+    :inapt-if-not context-clues--buffer-file-name-p)
+   ("r" context-clues-copy-relative-path
+    :description context-clues--describe-relative-path
+    :inapt-if-not context-clues--buffer-file-name-p)
+   ("F" context-clues-copy-full-path
+    :description context-clues--describe-full-path
+    :inapt-if-not context-clues--buffer-file-name-p)
+   ("d" context-clues-copy-directory
+    :description context-clues--describe-directory)
+   (":" context-clues-copy-file-with-line
+    :description context-clues--describe-file-with-line
+    :inapt-if-not context-clues--buffer-file-name-p)
+   (";" context-clues-copy-relative-path-with-line
+    :description context-clues--describe-relative-path-with-line
+    :inapt-if-not context-clues--buffer-file-name-p)
+   ("p" context-clues-copy-project-name
+    :description context-clues--describe-project-name
+    :inapt-if-not context-clues--in-project-p)]
   ["Buffer & Context"
-   [("b" "Buffer name" context-clues-copy-buffer-name)
-    ("g" "Git branch" context-clues-copy-git-branch
-     :inapt-if-not context-clues--in-git-repo-p)]
-   [("l" "Line number" context-clues-copy-line-number)
-    ("n" "Function name" context-clues-copy-function-name)]])
+   ("b" context-clues-copy-buffer-name
+    :description context-clues--describe-buffer-name)
+   ("g" context-clues-copy-git-branch
+    :description context-clues--describe-git-branch
+    :inapt-if-not context-clues--in-git-repo-p)
+   ("l" context-clues-copy-line-number
+    :description context-clues--describe-line-number)
+   ("n" context-clues-copy-function-name
+    :description context-clues--describe-function-name)])
 
 (provide 'context-clues)
 
