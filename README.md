@@ -28,7 +28,7 @@ current buffer are grayed out.
 1. Clone or download this repository:
 
 ```bash
-git clone https://github.com/yourusername/context-clues.git ~/.emacs.d/packages/context-clues
+git clone https://github.com/mrcnski/context-clues.git ~/.emacs.d/packages/context-clues
 ```
 
 2. Add to your Emacs configuration:
