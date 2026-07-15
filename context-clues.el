@@ -1,8 +1,10 @@
 ;;; context-clues.el --- Easily copy context like the current file name and path -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2025
+;; Copyright (C) 2025 Marcin Swieczkowski
 
-;; Author: Marcin Swieczkowski
+;; Author: Marcin Swieczkowski <marcin@realemail.net>
+;; Assisted-by: Claude:claude-opus-4-8
+;; Assisted-by: Claude:claude-fable-5
 ;; Version: 0.1.0
 ;; Package-Requires: ((emacs "28.1") (transient "0.3.0"))
 ;; Keywords: convenience, tools
