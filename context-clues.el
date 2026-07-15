@@ -73,17 +73,9 @@ the most distinctive part."
 
 ;;; Helper Functions
 
-(defun context-clues--buffer-file-name-p ()
-  "Return non-nil if current buffer is visiting a file."
-  (buffer-file-name))
-
 (defun context-clues--in-git-repo-p ()
   "Return non-nil if current buffer is in a git repository."
   (locate-dominating-file default-directory ".git"))
-
-(defun context-clues--in-project-p ()
-  "Return non-nil if current buffer is in a project."
-  (project-current))
 
 (defun context-clues--copy-to-kill-ring (text description)
   "Copy TEXT to kill ring and display TEXT and DESCRIPTION."
@@ -320,37 +312,40 @@ is returned."
 ;;;###autoload
 (transient-define-prefix context-clues ()
   "Copy file, buffer, and context information."
+  ;; Each clue is grayed out exactly when its value function returns nil
+  ;; -- the same condition that leaves it without a preview.
   ["File & Path"
    ("f" context-clues-copy-file-name
     :description context-clues--describe-file-name
-    :inapt-if-not context-clues--buffer-file-name-p)
+    :inapt-if-not context-clues--file-name)
    ("r" context-clues-copy-relative-path
     :description context-clues--describe-relative-path
-    :inapt-if-not context-clues--buffer-file-name-p)
+    :inapt-if-not context-clues--relative-path-value)
    ("F" context-clues-copy-full-path
     :description context-clues--describe-full-path
-    :inapt-if-not context-clues--buffer-file-name-p)
+    :inapt-if-not context-clues--full-path)
    ("d" context-clues-copy-directory
     :description context-clues--describe-directory)
    (":" context-clues-copy-file-with-line
     :description context-clues--describe-file-with-line
-    :inapt-if-not context-clues--buffer-file-name-p)
+    :inapt-if-not context-clues--file-with-line)
    (";" context-clues-copy-relative-path-with-line
     :description context-clues--describe-relative-path-with-line
-    :inapt-if-not context-clues--buffer-file-name-p)
+    :inapt-if-not context-clues--relative-path-with-line)
    ("p" context-clues-copy-project-name
     :description context-clues--describe-project-name
-    :inapt-if-not context-clues--in-project-p)]
+    :inapt-if-not context-clues--project-name)]
   ["Buffer & Context"
    ("b" context-clues-copy-buffer-name
     :description context-clues--describe-buffer-name)
    ("g" context-clues-copy-git-branch
     :description context-clues--describe-git-branch
-    :inapt-if-not context-clues--in-git-repo-p)
+    :inapt-if-not context-clues--git-branch)
    ("l" context-clues-copy-line-number
     :description context-clues--describe-line-number)
    ("n" context-clues-copy-function-name
-    :description context-clues--describe-function-name)])
+    :description context-clues--describe-function-name
+    :inapt-if-not context-clues--function-name)])
 
 (provide 'context-clues)
 
