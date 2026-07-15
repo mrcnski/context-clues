@@ -186,6 +186,7 @@ project, the path is relative to `default-directory' instead."
 
 ;;; Transient Menu
 
+;;;###autoload
 (transient-define-prefix context-clues ()
   "Copy file, buffer, and context information."
   ["File & Path"
