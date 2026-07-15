@@ -39,6 +39,7 @@
 
 ;;; Code:
 
+(require 'project)
 (require 'transient)
 (require 'which-func)
 
@@ -107,10 +108,11 @@ For non-file-visiting buffers, copies the default directory."
   "Return FILE-NAME relative to the project root.
 Both FILE-NAME and the project root are resolved with `file-truename'
 first, so a symlinked tree (e.g. a dotfiles repo linked into the home
-directory) does not produce a path full of leading \"../\"."
-  (let* ((project-root (or (and (fboundp 'project-root)
-                                (project-root (project-current)))
-                           default-directory)))
+directory) does not produce a path full of leading \"../\".  Outside a
+project, the path is relative to `default-directory' instead."
+  (let ((project-root (or (when-let ((project (project-current)))
+                            (project-root project))
+                          default-directory)))
     (file-relative-name (file-truename file-name)
                         (file-truename project-root))))
 
