@@ -14,6 +14,18 @@ Types of changes:
 - `Fixed`: for any bug fixes.
 - `Security`: in case of vulnerabilities.
 
+## [Unreleased]
+
+### Added
+
+- Breadcrumb clue (`>`): copies the relative path followed by the context at
+  point: the full heading path in Org and Markdown buffers, the nested function
+  path in code (e.g., `src/models.py > MyClass > my_method`).  Tree-sitter
+  buffers get the full defun nesting; other modes take the nested imenu path at
+  point.
+- `context-clues-breadcrumb-separator` to customize the separator between
+  breadcrumb components (default `" > "`).
+
 ## [0.2.0] - 2026-07-15
 
 ### Added

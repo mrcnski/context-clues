@@ -42,7 +42,9 @@
 
 ;;; Code:
 
+(require 'imenu)
 (require 'project)
+(require 'seq)
 (require 'subr-x)
 (require 'transient)
 (require 'which-func)
@@ -56,6 +58,11 @@
   "Format string for the message shown after copying.
 Use {text} for the copied text and {description} for the description.
 Example: \"Copied: {text} ({description})\" or \"{description}: {text}\""
+  :type 'string
+  :group 'context-clues)
+
+(defcustom context-clues-breadcrumb-separator " > "
+  "Separator between the components of the breadcrumb clue."
   :type 'string
   :group 'context-clues)
 
@@ -159,6 +166,55 @@ project, the path is relative to `default-directory' instead."
   "The name of the function at point, or nil when undeterminable."
   (ignore-errors (which-function)))
 
+(declare-function org-get-outline-path "org" (&optional with-self use-cache))
+(declare-function treesit-parser-list "treesit.c")
+(declare-function treesit-add-log-current-defun "treesit")
+(defvar treesit-add-log-defun-delimiter)
+
+(defun context-clues--imenu-join-parts (parts)
+  "Join imenu PARTS with the breadcrumb separator, or nil for no parts.
+Nested imenu indexes (e.g. `markdown-mode') use a \".\" leaf entry for a
+section's own heading; it adds nothing to the path and is dropped."
+  (when-let ((parts (seq-remove (apply-partially #'equal ".") parts)))
+    (string-join parts context-clues-breadcrumb-separator)))
+
+(defun context-clues--function-path ()
+  "The full path of nested defuns or sections at point, or nil.
+In tree-sitter enabled buffers, every enclosing defun contributes a
+component (e.g. class, then method), joined with
+`context-clues-breadcrumb-separator'.  Elsewhere the path comes from the
+buffer's (possibly nested) imenu index via `which-function' -- for
+example the heading path in `markdown-mode'."
+  (or (and (fboundp 'treesit-parser-list)
+           (treesit-parser-list)
+           (ignore-errors
+             (let ((treesit-add-log-defun-delimiter
+                    context-clues-breadcrumb-separator))
+               (treesit-add-log-current-defun))))
+      (progn
+        ;; `which-function' only consults an already-built imenu index.
+        (unless imenu--index-alist
+          (ignore-errors (imenu--make-index-alist t)))
+        (let ((which-func-imenu-joiner-function
+               #'context-clues--imenu-join-parts))
+          (context-clues--function-name)))))
+
+(defun context-clues--breadcrumb ()
+  "The full breadcrumb: relative path, then the context path at point.
+The components are joined with `context-clues-breadcrumb-separator'.  In
+Org buffers the context is the complete outline path down to the current
+heading; elsewhere it is the path of nested defuns at point, when there
+is one.  Nil for a non-file buffer."
+  (when-let ((relative-path (context-clues--relative-path-value)))
+    (let ((context-path
+           (if (derived-mode-p 'org-mode)
+               ;; Errors before the first headline.
+               (ignore-errors (org-get-outline-path t))
+             (when-let ((function-path (context-clues--function-path)))
+               (list function-path)))))
+      (string-join (cons relative-path context-path)
+                   context-clues-breadcrumb-separator))))
+
 ;;; Copy Functions
 
 (defun context-clues-copy-file-name ()
@@ -236,6 +292,13 @@ For non-file-visiting buffers, copies the default directory."
       (context-clues--copy-to-kill-ring func-name "function name")
     (user-error "Could not determine current function")))
 
+(defun context-clues-copy-breadcrumb ()
+  "Copy the full breadcrumb: relative path, then the context path at point."
+  (interactive)
+  (if-let ((breadcrumb (context-clues--breadcrumb)))
+      (context-clues--copy-to-kill-ring breadcrumb "breadcrumb")
+    (user-error "Buffer is not visiting a file")))
+
 ;;; Menu Descriptions
 
 (defconst context-clues--label-width 25
@@ -307,6 +370,10 @@ is returned."
   "Menu description for the function-name clue."
   (context-clues--describe "Function name" (context-clues--function-name)))
 
+(defun context-clues--describe-breadcrumb ()
+  "Menu description for the breadcrumb clue."
+  (context-clues--describe "Breadcrumb" (context-clues--breadcrumb)))
+
 ;;; Transient Menu
 
 ;;;###autoload
@@ -345,7 +412,10 @@ is returned."
     :description context-clues--describe-line-number)
    ("n" context-clues-copy-function-name
     :description context-clues--describe-function-name
-    :inapt-if-not context-clues--function-name)])
+    :inapt-if-not context-clues--function-name)
+   (">" context-clues-copy-breadcrumb
+    :description context-clues--describe-breadcrumb
+    :inapt-if-not context-clues--breadcrumb)])
 
 (provide 'context-clues)
 

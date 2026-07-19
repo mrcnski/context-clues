@@ -19,6 +19,7 @@ current buffer are grayed out.
 - **Full path** - Copy absolute file path
 - **Directory** - Copy directory path (or default directory for non-file buffers)
 - **File with line** - Copy file name with line number (e.g., `file.el:123`)
+- **Breadcrumb** - Copy relative path plus the context at point
 - ... and more!
 
 ## Installation
@@ -83,6 +84,14 @@ distinctive part). Customize the width and the face:
 
 The previews use the `context-clues-preview-face` face (inherits `shadow` by
 default); customize it with `M-x customize-face`.
+
+### Breadcrumb Separator
+
+Customize the separator between breadcrumb components:
+
+```elisp
+(setq context-clues-breadcrumb-separator " » ") ; default " > "
+```
 
 ### Key Binding
 
