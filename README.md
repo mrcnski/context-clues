@@ -4,6 +4,10 @@
 # context-clues
 
 <a href="https://melpa.org/#/context-clues"><img alt="MELPA" src="https://melpa.org/packages/context-clues-badge.svg"/></a>
+<a href="https://stable.melpa.org/#/context-clues"><img alt="MELPA Stable" src="https://stable.melpa.org/packages/context-clues-badge.svg"/></a>
+<a href="https://github.com/mrcnski/context-clues/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mrcnski/context-clues/actions/workflows/ci.yml/badge.svg"/></a>
+<a href="LICENSE"><img alt="License: GPL-3.0" src="https://img.shields.io/badge/license-GPL--3.0-blue.svg"/></a>
+<img alt="Emacs 28.1+" src="https://img.shields.io/badge/Emacs-28.1%2B-7F5AB6?logo=gnuemacs&logoColor=white"/>
 
 Easily copy context like the current file name and path, using a convenient transient menu interface!
 
@@ -11,6 +15,9 @@ Easily copy context like the current file name and path, using a convenient tran
 </div>
 
 ## Features
+
+context-clues lets you copy various file, buffer, and code context information
+to the kill ring.  Useful for e.g. communicating context with LLMs.
 
 Every entry in the menu shows a **live preview** of the value it would copy —
 labels on the left, values on the right. Entries that don't apply to the
