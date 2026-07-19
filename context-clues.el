@@ -5,7 +5,7 @@
 ;; Author: Marcin Swieczkowski <marcin@realemail.net>
 ;; Assisted-by: Claude:claude-opus-4-8
 ;; Assisted-by: Claude:claude-fable-5
-;; Version: 0.2.0
+;; Version: 0.3.0
 ;; Package-Requires: ((emacs "28.1") (transient "0.3.0"))
 ;; Keywords: convenience, tools
 ;; URL: https://github.com/mrcnski/context-clues
