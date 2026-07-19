@@ -3,6 +3,8 @@
 
 # context-clues
 
+<a href="https://melpa.org/#/context-clues"><img alt="MELPA" src="https://melpa.org/packages/context-clues-badge.svg"/></a>
+
 Easily copy context like the current file name and path, using a convenient transient menu interface!
 
 <img src="screenshot.png" alt="context-clues transient showing different possible clues" width="550">
@@ -24,6 +26,22 @@ current buffer are grayed out.
 
 ## Installation
 
+### MELPA
+
+context-clues is available on [MELPA](https://melpa.org/#/context-clues):
+
+```
+M-x package-install RET context-clues RET
+```
+
+Or with use-package:
+
+```elisp
+(use-package context-clues
+  :ensure t
+  :bind ("C-c c" . context-clues))
+```
+
 ### Manual Installation
 
 1. Clone or download this repository:
@@ -39,7 +57,7 @@ git clone https://github.com/mrcnski/context-clues.git ~/.emacs.d/packages/conte
 (require 'context-clues)
 ```
 
-### Using use-package
+Or with use-package:
 
 ```elisp
 (use-package context-clues
